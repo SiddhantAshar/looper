@@ -1,24 +1,49 @@
 import typer
-from typing import List
-from typing_extensions import Annotated
+# from typing import List
+# from typing import Annotated
 import time
 import os
+import json
+from json.decoder import JSONDecodeError
 from pathlib import Path
+from rich.pretty import pprint
 
+from models import Key
+from utils import read_config_file, store_config_file
 
 
 looper = typer.Typer()
 
 @looper.command("show")
-def show_config():
-    pass
+def show_config(config_name: str = "current"):
+
+    config_filepath = APP_DIR_PATH/f"{config_name}.json"
+
+    config = read_config_file(config_filepath)
+    pprint(config, expand_all=True)
+
 
 @looper.command("set")
-def set_config():
-    pass
+def set_config(key: Key, value: str):
+
+    # Create `current.json` if not present
+    current_config_filepath = APP_DIR_PATH/"current.json"
+    if not current_config_filepath.exists():
+        current_config_filepath.touch()
+
+    current_config = {}
+    try:
+        current_config = read_config_file(current_config_filepath)
+    except JSONDecodeError as e:
+        pass
+
+    current_config[key.value] = value
+
+    store_config_file(current_config_filepath, current_config)
+
 
 @looper.command("load")
-def load_config():
+def load_config(config_name: str):
     # Create `current.json` if not present
     current_config_filepath = APP_DIR_PATH/"current.json"
     if not current_config_filepath.exists():
