@@ -10,16 +10,28 @@ from rich.pretty import pprint
 
 from models import Key
 from utils import read_config_file, store_config_file
+from rich.panel import Panel
+from rich.pretty import Pretty
+from rich import print
 
 
 looper = typer.Typer()
 
+@looper.command("list")
+def list_configs():
+    # TODO: does looper provide any tool to display list?
+    pprint([file.stem for file in list(APP_DIR_PATH.glob('*.json'))])
+    # for file in list(APP_DIR_PATH.glob('*.json')):
+    #     # print(f"- {file.stem}")
+    #     pprint(file.stem)
+
+
 @looper.command("show")
-def show_config(config_name: str = "current"):
-
-    config_filepath = APP_DIR_PATH/f"{config_name}.json"
-
-    config = read_config_file(config_filepath)
+def show_config(config_name: str):
+    # TODO: proper error stating how to get confif_name
+    config_file_path = APP_DIR_PATH/f"{config_name}.json"
+    # TODO: check if config_file_path exists
+    config = read_config_file(config_file_path)
     pprint(config, expand_all=True)
 
 
@@ -27,38 +39,53 @@ def show_config(config_name: str = "current"):
 def set_config(key: Key, value: str):
 
     # Create `current.json` if not present
-    current_config_filepath = APP_DIR_PATH/"current.json"
-    if not current_config_filepath.exists():
-        current_config_filepath.touch()
+    current_config_file_path = APP_DIR_PATH/"current.json"
+    if not current_config_file_path.exists():
+        current_config_file_path.touch()
 
     current_config = {}
     try:
-        current_config = read_config_file(current_config_filepath)
+        current_config = read_config_file(current_config_file_path)
     except JSONDecodeError as e:
+        # File is empty, ignore
         pass
 
     current_config[key.value] = value
 
-    store_config_file(current_config_filepath, current_config)
+    store_config_file(current_config_file_path, current_config)
 
 
 @looper.command("load")
 def load_config(config_name: str):
-    # Create `current.json` if not present
-    current_config_filepath = APP_DIR_PATH/"current.json"
-    if not current_config_filepath.exists():
-        current_config_filepath.touch()
-    
     # copy `selected_config.json` to `current.json`
+    current_config_file_path = APP_DIR_PATH/"current.json"
+    config_file_path = APP_DIR_PATH/f"{config_name}.json"
     
+    # TODO: check if config_file_path exists
+    # TODO: current config will be lost, prompt overwrite/abort
+
     pass
 
 @looper.command("store")
-def store_config():
-    pass
+def store_config(config_file_name:str):
+
+    current_config_file_path = APP_DIR_PATH/"current.json"
+    new_config_file_path = APP_DIR_PATH/f"{config_file_name}.json"
+    
+    # TODO: check if current config exists
+    # TODO: check if new config file exists, prompt overwrite/abort
+
+    current_config = read_config_file(current_config_file_path)
+
+    store_config_file(new_config_file_path, current_config)
+
 
 @looper.command("run")
 def run():
+    current_config_file_path = APP_DIR_PATH/"current.json"
+
+    # TODO: check if current config exists
+    # print(f"{command}".format)
     pass
 
 # @looper.command()
