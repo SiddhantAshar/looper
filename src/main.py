@@ -1,65 +1,61 @@
 import typer
-# from typing import List
-# from typing import Annotated
-import time
-import os
-import json
-from json.decoder import JSONDecodeError
-from pathlib import Path
-from rich.pretty import pprint
 
-from models import Key
-from utils import read_config_file, store_config_file
-from rich.panel import Panel
-from rich.pretty import Pretty
+from typing import List
+from typing import Annotated
+import time
+
+from rich.pretty import pprint
 from rich import print
 
+from utils import get_config_list, read_config_file, store_config_file, init_looper, execute_command
 
 looper = typer.Typer()
 
 @looper.command("list")
 def list_configs():
-    # TODO: does looper provide any tool to display list?
-    pprint([file.stem for file in list(APP_DIR_PATH.glob('*.json'))])
-    # for file in list(APP_DIR_PATH.glob('*.json')):
-    #     # print(f"- {file.stem}")
-    #     pprint(file.stem)
+    # TODO: Stylist list using single column table?
+    config_list = get_config_list()
+    print(config_list)
 
 
 @looper.command("show")
-def show_config(config_name: str):
-    # TODO: proper error stating how to get confif_name
-    config_file_path = APP_DIR_PATH/f"{config_name}.json"
-    # TODO: check if config_file_path exists
-    config = read_config_file(config_file_path)
+def show_config(config_name: Annotated[str, typer.Argument(help='Name of the config to view. Use "list" command to view available configs.')]):
+    # TODO: proper error stating how to get config_name
+    config = read_config_file(config_name)
     pprint(config, expand_all=True)
 
 
 @looper.command("set")
-def set_config(key: Key, value: str):
+def set_config(
+    command: Annotated[str, typer.Option(help="The command which should be executed")] = None,
+    variable: Annotated[str, typer.Option(help="List of values on which the `cmd` should iterate")] = None,
+    separator: Annotated[str, typer.Option(help="Separator to split list of variables")] = None,
+    cooldown: Annotated[float, typer.Option(help="Gap (in seconds) between each iteration")] = None):
 
-    # Create `current.json` if not present
-    current_config_file_path = APP_DIR_PATH/"current.json"
-    if not current_config_file_path.exists():
-        current_config_file_path.touch()
+    # Read current config
+    current_config = read_config_file("current")
 
-    current_config = {}
-    try:
-        current_config = read_config_file(current_config_file_path)
-    except JSONDecodeError as e:
-        # File is empty, ignore
-        pass
+    # Update values
+    if variable:
+        current_config["variable"] = variable
+    
+    if command:
+        current_config["command"] = command
+    
+    if separator:
+        current_config["separator"] = separator
+    
+    if cooldown:
+        current_config["cooldown"] = cooldown
 
-    current_config[key.value] = value
-
-    store_config_file(current_config_file_path, current_config)
+    store_config_file("current", current_config)
 
 
 @looper.command("load")
-def load_config(config_name: str):
+def load_config(config_name: Annotated[str, typer.Argument(help='Name of the config to load. Use "list" command to view available configs.')]):
     # copy `selected_config.json` to `current.json`
-    current_config_file_path = APP_DIR_PATH/"current.json"
-    config_file_path = APP_DIR_PATH/f"{config_name}.json"
+    # current_config_file_path = APP_DIR_PATH/"current.json"
+    # config_file_path = APP_DIR_PATH/f"{config_name}.json"
     
     # TODO: check if config_file_path exists
     # TODO: current config will be lost, prompt overwrite/abort
@@ -67,57 +63,38 @@ def load_config(config_name: str):
     pass
 
 @looper.command("store")
-def store_config(config_file_name:str):
+def store_config(config_file_name: Annotated[str, typer.Argument(help='Name of the target config.')]):
 
-    current_config_file_path = APP_DIR_PATH/"current.json"
-    new_config_file_path = APP_DIR_PATH/f"{config_file_name}.json"
-    
-    # TODO: check if current config exists
+    # Read current config
+    current_config = read_config_file("current")
+
     # TODO: check if new config file exists, prompt overwrite/abort
-
-    current_config = read_config_file(current_config_file_path)
-
-    store_config_file(new_config_file_path, current_config)
+    store_config_file(config_file_name, current_config)
 
 
 @looper.command("run")
 def run():
-    current_config_file_path = APP_DIR_PATH/"current.json"
+    # current_config_file_path = APP_DIR_PATH/"current.json"
 
-    # TODO: check if current config exists
-    # print(f"{command}".format)
+    # Read current config
+    current_config = read_config_file("current")
+
+    # TODO: check if empty
+    # TODO: verify all the required key-value are present in config
+    
+    for variable in current_config["variable"].split(current_config["separator"]):
+        # TODO: check if variable is empty (e.g. trailing separator)
+        execute_command(f"{current_config['command']}".format(variable))
+        
+        # print(f"{current_config['command']}".format(variable))
+        time.sleep(float(current_config["cooldown"]))
+        
+        # if var != vars[-1]:
+        #     time.sleep(cooldown)
     pass
 
-# @looper.command()
-# def main(vars: Annotated[List[str], typer.Argument(help="List of values on which the `cmd` should iterate")],
-#          cmd: Annotated[str, typer.Argument(help="The command which should be executed")],
-#          cooldown: Annotated[float, typer.Argument(help="Gap (in seconds) between each iteration")] = 0):
-    
-#     for var in vars:
-#         print(f"{cmd}".format(var))
-#         if var != vars[-1]:
-#             time.sleep(cooldown)
 
-# @app.command()
-# def not_main(your_name: str):
-#     print(f"hello {your_name}")
+if __name__ == "__main__":
+    init_looper()
 
-if __name__=="__main__":
-    
-    APP_DIR = os.getenv("LOOPER_HOME", "/home/sid/.config/looper")
-    APP_DIR_PATH = Path(APP_DIR)
-
-    try:
-        APP_DIR_PATH.mkdir()
-    except FileExistsError:
-        pass
-    except PermissionError:
-        print(f"Permission denied: Unable to create '{APP_DIR_PATH}'.")
-        exit(1)
-    except Exception as e:
-        print(f"An error occurred while creating the home directory: {e}")
-        exit(1)
-
-    os.chdir(APP_DIR)
-    
     looper()
