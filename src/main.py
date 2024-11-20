@@ -1,6 +1,5 @@
 import typer
 
-from typing import List
 from typing import Annotated
 import time
 
@@ -74,7 +73,6 @@ def store_config(config_file_name: Annotated[str, typer.Argument(help='Name of t
 
 @looper.command("run")
 def run():
-    # current_config_file_path = APP_DIR_PATH/"current.json"
 
     # Read current config
     current_config = read_config_file("current")
@@ -83,15 +81,18 @@ def run():
     # TODO: verify all the required key-value are present in config
     
     for variable in current_config["variable"].split(current_config["separator"]):
+
+        print("====================================")
+        print(f"Variable= {variable}")
         # TODO: check if variable is empty (e.g. trailing separator)
         execute_command(f"{current_config['command']}".format(variable))
         
         # print(f"{current_config['command']}".format(variable))
+        print("====================================")
         time.sleep(float(current_config["cooldown"]))
         
         # if var != vars[-1]:
         #     time.sleep(cooldown)
-    pass
 
 
 if __name__ == "__main__":
